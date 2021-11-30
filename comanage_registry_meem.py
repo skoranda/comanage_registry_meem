@@ -200,16 +200,34 @@ class ComanageRegistryMeem(ResponseMicroService):
             logger.info(logline)
             return super().process(context, data)
 
+        user_groups = attributes.get(config['group_membership_attribute'], [])
+        msg = "User groups are {}".format(user_groups)
+        logline = lu.LOG_FMT.format(id=session_id, message=msg)
+        logger.debug(logline)
+
+        # Determine if user is required to do MFA at all
+        if "mfa_participants_group" in config:
+            mfa_participants_group = config['mfa_participants_group']
+            msg = "MFA participants group is '{}'".format(mfa_participants_group)
+            logline = lu.LOG_FMT.format(id=session_id, message=msg)
+            logger.debug(logline)
+
+            user_mfa_participant = True if mfa_participants_group in user_groups else False
+
+            if not user_mfa_participant:
+                msg = "User is not currently required to use MFA"
+                logline = lu.LOG_FMT.format(id=session_id, message=msg)
+                logger.info(logline)
+                context.decorate("user_mfa_exempt", True)
+                return super().process(context, data)
+
+        # Either there is no participants group configured, or User is in the MFA Participant Group
         # Determine if user is exempt from MFA
         mfa_exempt_group = config['mfa_exempt_group']
         msg = "MFA exempt group is '{}'".format(mfa_exempt_group)
         logline = lu.LOG_FMT.format(id=session_id, message=msg)
         logger.debug(logline)
 
-        user_groups = attributes.get(config['group_membership_attribute'], [])
-        msg = "User groups are {}".format(user_groups)
-        logline = lu.LOG_FMT.format(id=session_id, message=msg)
-        logger.debug(logline)
 
         user_mfa_exempt = True if mfa_exempt_group in user_groups else False
 
